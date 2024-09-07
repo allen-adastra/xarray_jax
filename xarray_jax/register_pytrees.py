@@ -1,12 +1,11 @@
 import xarray
 import jax
-from typing import Tuple, Hashable
-from .structs import XJVariable, XJDataArray, XJDataset, _HashableCoords
+from .structs import XJVariable, XJDataArray, XJDataset
 
 
 def _flatten_variable(
     v: xarray.Variable,
-) -> Tuple[Tuple[jax.typing.ArrayLike], Tuple[Hashable, ...]]:
+):
     children, aux = jax.tree.flatten(XJVariable(v))
     return children, aux
 
