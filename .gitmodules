@@ -1,3 +1,0 @@
-[submodule "submodules/xarray"]
-	path = submodules/xarray
-	url = git@github.com:allen-adastra/xarray.git

@@ -7,14 +7,15 @@ readme = "README.md"
 
 [tool.poetry.dependencies]
 python = "^3.10"
-xarray = {path = "./submodules/xarray", develop = true}
-jax = "0.4.31"
+jax = "0.4.33"
 equinox = "^0.11.5"
-diffrax = "^0.6.0"
+xarray = "^2024.9.0"
 
 
 [tool.poetry.group.dev.dependencies]
 ipykernel = "^6.29.5"
+hypothesis = "^6.112.1"
+diffrax = "^0.6.0"
 
 [build-system]
 requires = ["poetry-core"]
