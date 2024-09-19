@@ -1275,9 +1275,9 @@ viz = ["matplotlib", "nc-time-axis", "seaborn"]
 
 [package.source]
 type = "directory"
-url = "xarray"
+url = "submodules/xarray"
 
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10"
-content-hash = "eff72952f2cabd9b589973b73c15ebed2a1ef8ff5347ce282fb2788dc81a8a1f"
+content-hash = "fb03f5b3b59858fa1b390f0f2eb24f964311ff9fc3717732054d66d20751ebb7"
