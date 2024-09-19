@@ -23,15 +23,32 @@ def test_dataarray():
     assert da_mask._variable._data is True
 
 
+def test_recursion_issue():
+    import jax
+    import xarray_jax
+    import xarray as xr
+    import jax.numpy as jnp
+
+    da = xr.DataArray(jnp.arange(10), dims=["x"])
+
+    da_mask = jax.tree.map(lambda x: True, da)
+
+    print(da_mask)
+
+
 def test_ds():
     ds = xr.tutorial.load_dataset("air_temperature")
 
+    foo, bar = jax.tree.flatten(ds)
+
+    back = jax.tree.unflatten(bar, foo)
     import pdb
 
     pdb.set_trace()
 
-    # ds_mask = jax.tree.map(lambda x: 2.0 * x, ds)
+    # ds_mask = jax.tree.map(lambda x: True, ds)
 
+    # v = ds_mask.data_vars
     # import pdb
 
     # pdb.set_trace()
