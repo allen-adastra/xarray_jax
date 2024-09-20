@@ -2,11 +2,98 @@
 
 This is a simple experiment at integrating Xarray + JAX, leveraging [equinox](https://github.com/patrick-kidger/equinox).
 
-This involves two components:
-1. Some minor changes to Xarray to prevent Xarray from automatically converting to numpy arrays. This will not be necessary starting with JAX v0.4.32 when the Array API gets adopted [relevant discussion](https://github.com/pydata/xarray/issues/7848#issuecomment-2336411994).
-2. Registering `xr.Variable`, `xr.IndexVariable`, `xr.DataArray`, and `xr.Dataset` as PyTree nodes.
+``` python
+import jax.numpy as jnp
+import xarray as xr
+import xarray_jax as xj
 
-See the [notebook](./example.ipynb).
+# Construct a DataArray.
+da = xr.DataArray(
+    xr.Variable(["x", "y"], jnp.ones((2, 3))),
+    coords={"x": [1, 2], "y": [3, 4, 5]},
+    name="foo",
+    attrs={"attr1": "value1"},
+)
+
+# Do some operations inside a JIT compiled function.
+@eqx.filter_jit
+def some_function(data):
+    neg_data = -1.0 * data # Multiply data by -1.
+    return neg_data * neg_data.coords["y"] # Multiply data by coords.
+
+da = some_function(da)
+
+# Construct a xr.DataArray with dummy data (useful for tree manipulation).
+da_mask = jax.tree.map(lambda _: bool, data)
+```
+
+`xr.Dataset` is currently not supported, but you can do conversions to/from a custom `xj.Dataset` types inside jit-compiled functions.
+``` python
+ds = xr.tutorial.load_dataset("air_temperature")
+
+@eqx.filter_jit
+def some_function(xjds: xj.XjDataset):
+    # Convert to xr.Dataset.
+    xrds = xj.to_xarray(xjds)
+
+    # Do some operation.
+    xrds = -1.0 * xrds
+
+    # Convert back to xj.Dataset.
+    return xj.from_xarray(xrds)
+
+xjds = some_function(xj.from_xarray(ds))
+ds_new = xj.to_xarray(xjds)
+```
+
+
+
+## Status
+- [ ] PyTree node registrations
+  - [x] `xr.Variable`
+  - [x] `xr.IndexVariable`
+  - [x] `xr.DataArray`
+  - [ ] `xr.Dataset`
+- [x] Minimal shadow types implemented as [equinox modules](https://github.com/patrick-kidger/equinox) to handle edge cases (Note: these types are merely data structures that contain the data of these types. They don't have any of the methods of the xarray types).
+  - [x] `xj.Variable`
+  - [x] `xj.DataArray`
+  - [x] `xj.Dataset`
+- [x] `xj.from_xarray` and `xj.to_xarray` functions to go between `xj` and `xr` types inside jit-compiled functions.
+- [x] Support for `xr` types with dummy data (useful for tree manipulation).
+
+## Sharp Edges
+
+### Prefer `eqx.filter_jit` over `jax.jit`
+There are some edge cases with metadata that `eqx.filter_jit` handles but `jax.jit` does not.
+
+### Operations that Increase the Dimensionality of the Data
+Operations that increase the dimensionality of the data (e.g. `jnp.expand_dims`) will cause problems downstream.
+
+``` python
+    var = xr.Variable(dims=("x", "y"), data=jnp.ones((3, 3)))
+
+    # This will succeed.
+    var = jax.tree.map(lambda x: jnp.expand_dims(x, axis=0), var)
+
+    # This will fail.
+    var = var + 1 
+```
+
+### Dispatching to jnp is not supported yet
+Pending resolution of https://github.com/pydata/xarray/issues/7848.
+``` python
+import xarray as xr
+import xarray_jax as xj
+
+var = xr.Variable(dims=("x", "y"), data=jnp.ones((3, 3)))
+
+# This will fail.
+jnp.square(var)
+
+# This will work.
+xr.apply_ufunc(jnp.square, var)
+```
+
 
 ## Distinction from the GraphCast Implementation
 This experiment is largely inspired by the [GraphCast implementation](https://github.com/google-deepmind/graphcast/blob/main/graphcast/xarray_jax.py), with a direct re-use of the `_HashableCoords` in that project.
