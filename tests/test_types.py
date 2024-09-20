@@ -122,6 +122,19 @@ def test_roundtrip(xr_data):
     xr_data_roundtrip = xarray_jax.to_xarray(xj_data)
     assert xr_data.equals(xr_data_roundtrip)
 
+    #
+    # Test that we can go back and forth inside a jit-compiled function.
+    #
+    @eqx.filter_jit
+    def fn(xj_data_):
+        xr_data_ = xarray_jax.to_xarray(xj_data_)
+        xr_data = -1.0 * xr_data_ # Some operation.
+        return xarray_jax.from_xarray(xr_data)
+
+    xj_data_roundtrip_neg = fn(xj_data)
+    xr_data_roundtrip_neg = xarray_jax.to_xarray(xj_data_roundtrip_neg)
+    assert xr_data.equals(-1.0 * xr_data_roundtrip_neg)
+
 @pytest.mark.skip(reason="Dataset is not yet supported.")
 def test_ds():
     ds = xr.tutorial.load_dataset("air_temperature")
