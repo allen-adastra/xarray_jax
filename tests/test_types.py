@@ -11,6 +11,7 @@ import xarray_jax
 import pytest
 import equinox as eqx
 from jaxtyping import PyTree
+import numpy as np
 
 jax.config.update("jax_enable_x64", True)
 
@@ -31,7 +32,13 @@ index_variables = xrst.variables(
 # Pending xarray developers adding strategies for DataArrays.
 # https://github.com/pydata/xarray/pull/6908
 data_arrays = xp_variables.map(
-    lambda var: xr.DataArray(var, coords={"dummy_coord": (var.dims, jnp.ones(var.data.shape)), "dummy_coord2": (var.dims, var.data)})
+    lambda var: xr.DataArray(
+        var,
+        coords={
+            "dummy_coord": (var.dims, np.ones(var.data.shape)),
+            "dummy_coord2": (var.dims, np.asarray(var.data)),
+        },
+    )
 )
 
 # Creating a strategy for ufuncs to test.
@@ -111,6 +118,7 @@ def test_dataarrays(da: xr.DataArray, ufunc):
     )
     assert result_da.equals(expected_da)
 
+
 @given(xr_data=st.one_of(xp_variables, index_variables, data_arrays))
 @settings(deadline=None)
 def test_roundtrip(xr_data):
@@ -128,12 +136,13 @@ def test_roundtrip(xr_data):
     @eqx.filter_jit
     def fn(xj_data_):
         xr_data_ = xarray_jax.to_xarray(xj_data_)
-        xr_data = -1.0 * xr_data_ # Some operation.
-        return xarray_jax.from_xarray(xr_data)
+        xr_data_ = -1.0 * xr_data_  # Some operation.
+        return xarray_jax.from_xarray(xr_data_)
 
     xj_data_roundtrip_neg = fn(xj_data)
     xr_data_roundtrip_neg = xarray_jax.to_xarray(xj_data_roundtrip_neg)
-    assert xr_data.equals(-1.0 * xr_data_roundtrip_neg)
+    assert xr_data_roundtrip_neg.equals(-1.0 * xr_data)
+
 
 @pytest.mark.skip(reason="Dataset is not yet supported.")
 def test_ds():

@@ -9,6 +9,7 @@ import equinox as eqx
 import jax
 import xarray
 
+
 class _HashableCoords(collections.abc.Mapping):
     """
     Originally implemented in the GraphCast project:
@@ -93,18 +94,18 @@ class XjDataArray(eqx.Module):
     def __init__(
         self,
         variable: XjVariable,
-        coords: Mapping[Hashable, xarray.Variable],
+        coords: _HashableCoords,
         name: Optional[str] = None,
     ):
         self.variable = variable
-        self.coords = _HashableCoords(coords)
+        self.coords = coords
         self.name = name
 
     def to_xarray(self) -> xarray.DataArray:
         var = self.variable.to_xarray()
         if var is None:
             return None
-        return xarray.DataArray(var, name=self.name, coords=self.coords)
+        return xarray.DataArray(var, name=self.name, coords=dict(self.coords))
 
     @classmethod
     def from_xarray(cls, da: xarray.DataArray) -> "XjDataArray":
@@ -121,11 +122,11 @@ class XjDataset(eqx.Module):
     def __init__(
         self,
         variables: dict[Hashable, XjVariable],
-        coords: Mapping[Hashable, xarray.Variable],
+        coords: _HashableCoords,
         attrs: Optional[Mapping] = None,
     ):
         self.variables = variables
-        self.coords = _HashableCoords(coords)
+        self.coords = coords
         self.attrs = attrs
 
     def to_xarray(self) -> xarray.Dataset:
@@ -135,7 +136,7 @@ class XjDataset(eqx.Module):
 
         return xarray.Dataset(
             data_vars,
-            coords=self.coords,
+            coords=dict(self.coords),
             attrs=self.attrs,
         )
 
@@ -150,8 +151,11 @@ class XjDataset(eqx.Module):
             ds.attrs,
         )
 
-def from_xarray(obj: Union[xarray.Variable, xarray.DataArray, xarray.Dataset]) -> Union[XjVariable, XjDataArray, XjDataset]:
-    """ Convert an xarray object to an xarray_jax object.
+
+def from_xarray(
+    obj: Union[xarray.Variable, xarray.DataArray, xarray.Dataset],
+) -> Union[XjVariable, XjDataArray, XjDataset]:
+    """Convert an xarray object to an xarray_jax object.
 
     Args:
         obj (Union[xarray.Variable, xarray.DataArray, xarray.Dataset]): xarray object to convert.
@@ -170,9 +174,12 @@ def from_xarray(obj: Union[xarray.Variable, xarray.DataArray, xarray.Dataset]) -
         return XjDataset.from_xarray(obj)
     else:
         raise ValueError(f"Unsupported type: {type(obj)}")
-    
-def to_xarray(obj: Union[XjVariable, XjDataArray, XjDataset]) -> Union[xarray.Variable, xarray.DataArray, xarray.Dataset]:
-    """ Convert an xarray_jax object to an xarray object.
+
+
+def to_xarray(
+    obj: Union[XjVariable, XjDataArray, XjDataset],
+) -> Union[xarray.Variable, xarray.DataArray, xarray.Dataset]:
+    """Convert an xarray_jax object to an xarray object.
 
     Args:
         obj (Union[XjVariable, XjDataArray, XjDataset]): xarray_jax object to convert.
