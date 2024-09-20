@@ -70,21 +70,18 @@ There are some edge cases with metadata that `eqx.filter_jit` handles but `jax.j
 Operations that increase the dimensionality of the data (e.g. `jnp.expand_dims`) will cause problems downstream.
 
 ``` python
-    var = xr.Variable(dims=("x", "y"), data=jnp.ones((3, 3)))
+var = xr.Variable(dims=("x", "y"), data=jnp.ones((3, 3)))
 
-    # This will succeed.
-    var = jax.tree.map(lambda x: jnp.expand_dims(x, axis=0), var)
+# This will not error.
+var = jax.tree.map(lambda x: jnp.expand_dims(x, axis=0), var)
 
-    # This will fail.
-    var = var + 1 
+# The error from expanding the dimensionality will be triggered here.
+var = var + 1 
 ```
 
 ### Dispatching to jnp is not supported yet
 Pending resolution of https://github.com/pydata/xarray/issues/7848.
 ``` python
-import xarray as xr
-import xarray_jax as xj
-
 var = xr.Variable(dims=("x", "y"), data=jnp.ones((3, 3)))
 
 # This will fail.
