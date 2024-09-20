@@ -1,6 +1,6 @@
 import xarray
 import jax
-from .types import _HashableCoords
+from .custom_types import _HashableCoords
 from typing import Tuple, Hashable, Mapping
 
 
