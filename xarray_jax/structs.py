@@ -66,7 +66,7 @@ class _HashableCoords(collections.abc.Mapping):
             )
 
 
-class XJVariable(eqx.Module):
+class Variable(eqx.Module):
     data: jax.Array
     dims: Tuple[str, ...] = eqx.field(static=True)
     attrs: Optional[Mapping] = eqx.field(static=True)
@@ -82,13 +82,13 @@ class XJVariable(eqx.Module):
         return xarray.Variable(dims=self.dims, data=self.data, attrs=self.attrs)
 
 
-class XJDataArray(eqx.Module):
-    variable: XJVariable
+class DataArray(eqx.Module):
+    variable: Variable
     coords: _HashableCoords = eqx.field(static=True)
     name: Optional[str] = eqx.field(static=True)
 
     def __init__(self, da: xarray.DataArray):
-        self.variable = XJVariable(da.variable)
+        self.variable = Variable(da.variable)
         self.coords = _HashableCoords(da.coords)
         self.name = da.name
 
@@ -99,14 +99,14 @@ class XJDataArray(eqx.Module):
         return xarray.DataArray(var, name=self.name, coords=self.coords)
 
 
-class XJDataset(eqx.Module):
-    variables: dict[Hashable, XJVariable]
+class Dataset(eqx.Module):
+    variables: dict[Hashable, Variable]
     coords: _HashableCoords = eqx.field(static=True)
     attrs: Optional[Mapping] = eqx.field(static=True)
 
     def __init__(self, ds: xarray.Dataset):
         self.variables = {
-            name: XJVariable(da.variable) for name, da in ds.data_vars.items()
+            name: Variable(da.variable) for name, da in ds.data_vars.items()
         }
         self.coords = _HashableCoords(ds.coords)
         self.attrs = ds.attrs
