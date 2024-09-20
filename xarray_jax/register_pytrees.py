@@ -1,6 +1,6 @@
 import xarray
 import jax
-from .structs import _HashableCoords
+from .types import _HashableCoords
 from typing import Tuple, Hashable, Mapping
 
 
@@ -30,7 +30,6 @@ def _unflatten_variable(
     var._dims = dims
     var._data = data
     var._attrs = attrs
-
     var._encoding = None
 
     return var
@@ -98,7 +97,7 @@ jax.tree_util.register_pytree_node(
     xarray.Variable, _flatten_variable, _unflatten_variable
 )
 jax.tree_util.register_pytree_node(
-    xarray.IndexVariable, _flatten_variable, _unflatten_data_array
+    xarray.IndexVariable, _flatten_variable, _unflatten_variable
 )
 jax.tree_util.register_pytree_node(
     xarray.DataArray, _flatten_data_array, _unflatten_data_array

@@ -1,15 +1,12 @@
 import collections
+from collections.abc import Hashable, Iterator, Mapping
 from typing import (
-    Hashable,
-    Iterator,
-    Mapping,
     Optional,
-    Tuple,
 )
 
+import equinox as eqx
 import jax
 import xarray
-import equinox as eqx
 
 
 class _HashableCoords(collections.abc.Mapping):
@@ -32,7 +29,7 @@ class _HashableCoords(collections.abc.Mapping):
         self._variables = coord_vars
 
     def __repr__(self) -> str:
-        return f"_HashableCoords({repr(self._variables)})"
+        return f"_HashableCoords({self._variables!r})"
 
     def __getitem__(self, key: Hashable) -> xarray.Variable:
         return self._variables[key]
@@ -66,31 +63,42 @@ class _HashableCoords(collections.abc.Mapping):
             )
 
 
-class Variable(eqx.Module):
+class XjVariable(eqx.Module):
     data: jax.Array
-    dims: Tuple[str, ...] = eqx.field(static=True)
+    dims: tuple[str, ...] = eqx.field(static=True)
     attrs: Optional[Mapping] = eqx.field(static=True)
 
-    def __init__(self, var: xarray.Variable):
-        self.data = var.data
-        self.dims = var.dims
-        self.attrs = var.attrs
+    def __init__(
+        self, data: jax.Array, dims: tuple[str, ...], attrs: Optional[Mapping] = None
+    ):
+        self.data = data
+        self.dims = dims
+        self.attrs = attrs
 
     def to_xarray(self) -> xarray.Variable:
         if self.data is None:
             return None
         return xarray.Variable(dims=self.dims, data=self.data, attrs=self.attrs)
 
+    @classmethod
+    def from_xarray(cls, var: xarray.Variable) -> "XjVariable":
+        return cls(data=var.data, dims=var.dims, attrs=var.attrs)
 
-class DataArray(eqx.Module):
-    variable: Variable
+
+class XjDataArray(eqx.Module):
+    variable: XjVariable
     coords: _HashableCoords = eqx.field(static=True)
     name: Optional[str] = eqx.field(static=True)
 
-    def __init__(self, da: xarray.DataArray):
-        self.variable = Variable(da.variable)
-        self.coords = _HashableCoords(da.coords)
-        self.name = da.name
+    def __init__(
+        self,
+        variable: XjVariable,
+        coords: Mapping[Hashable, xarray.Variable],
+        name: Optional[str] = None,
+    ):
+        self.variable = variable
+        self.coords = _HashableCoords(coords)
+        self.name = name
 
     def to_xarray(self) -> xarray.DataArray:
         var = self.variable.to_xarray()
@@ -98,18 +106,27 @@ class DataArray(eqx.Module):
             return None
         return xarray.DataArray(var, name=self.name, coords=self.coords)
 
+    @classmethod
+    def from_xarray(cls, da: xarray.DataArray) -> "XjDataArray":
+        return cls(
+            XjVariable.from_xarray(da.variable), _HashableCoords(da.coords), da.name
+        )
 
-class Dataset(eqx.Module):
-    variables: dict[Hashable, Variable]
+
+class XjDataset(eqx.Module):
+    variables: dict[Hashable, XjVariable]
     coords: _HashableCoords = eqx.field(static=True)
     attrs: Optional[Mapping] = eqx.field(static=True)
 
-    def __init__(self, ds: xarray.Dataset):
-        self.variables = {
-            name: Variable(da.variable) for name, da in ds.data_vars.items()
-        }
-        self.coords = _HashableCoords(ds.coords)
-        self.attrs = ds.attrs
+    def __init__(
+        self,
+        variables: dict[Hashable, XjVariable],
+        coords: Mapping[Hashable, xarray.Variable],
+        attrs: Optional[Mapping] = None,
+    ):
+        self.variables = variables
+        self.coords = _HashableCoords(coords)
+        self.attrs = attrs
 
     def to_xarray(self) -> xarray.Dataset:
         data_vars = {name: var.to_xarray() for name, var in self.variables.items()}
@@ -120,4 +137,15 @@ class Dataset(eqx.Module):
             data_vars,
             coords=self.coords,
             attrs=self.attrs,
+        )
+
+    @classmethod
+    def from_xarray(cls, ds: xarray.Dataset) -> "XjDataset":
+        return cls(
+            {
+                name: XjVariable.from_xarray(da.variable)
+                for name, da in ds.data_vars.items()
+            },
+            _HashableCoords(ds.coords),
+            ds.attrs,
         )
