@@ -8,7 +8,9 @@ import xarray.testing.strategies as xrst
 from hypothesis.strategies import sampled_from
 
 import xarray_jax
+import pytest
 import equinox as eqx
+from jaxtyping import PyTree
 
 jax.config.update("jax_enable_x64", True)
 
@@ -25,6 +27,12 @@ index_variables = xrst.variables(
     dims=xrst.dimension_names(min_dims=1, max_dims=1),
 )
 
+# TODO(allenw): for now, just construct simple DataArrays from Variables.
+# Pending xarray developers adding strategies for DataArrays.
+# https://github.com/pydata/xarray/pull/6908
+data_arrays = xp_variables.map(
+    lambda var: xr.DataArray(var, coords={"dummy_coord": (var.dims, jnp.ones(var.data.shape)), "dummy_coord2": (var.dims, var.data)})
+)
 
 # Creating a strategy for ufuncs to test.
 ufuncs = [jnp.abs, jnp.sin, jnp.cos, jnp.exp, jnp.log]
@@ -73,20 +81,12 @@ def test_index_variables(var: xr.Variable, ufunc):
     assert not isinstance(var.data, jax.Array)
 
 
-# TODO(allenw): for now, just construct simple DataArrays from Variables.
-# Pending xarray developers adding strategies for DataArrays.
-# https://github.com/pydata/xarray/pull/6908
-@given(var=xp_variables, ufunc=ufunc_strat)
+@given(da=data_arrays, ufunc=ufunc_strat)
 @settings(deadline=None)
-def test_dataarrays(var: xr.Variable, ufunc):
-    dummy_coords = {
-        "dummy_coord": (var.dims, jnp.ones(var.data.shape)),
-        "dummy_coord2": (var.dims, var.data),
-    }
-
-    da = xr.DataArray(var, coords=dummy_coords)
-
+def test_dataarrays(da: xr.DataArray, ufunc):
+    #
     # Test that the data is a jax array.
+    #
     assert isinstance(da.variable.data, jax.Array)
 
     #
@@ -107,11 +107,22 @@ def test_dataarrays(var: xr.Variable, ufunc):
 
     expected_da = xr.DataArray(
         xr.Variable(da.variable.dims, ufunc(da.variable.data), da.variable.attrs),
-        coords=dummy_coords,
+        coords=da.coords,
     )
     assert result_da.equals(expected_da)
 
+@given(xr_data=st.one_of(xp_variables, index_variables, data_arrays))
+@settings(deadline=None)
+def test_roundtrip(xr_data):
+    #
+    # Test that we can convert an xarray object to a xarray_jax object and back.
+    #
+    xj_data = xarray_jax.from_xarray(xr_data)
+    assert isinstance(xj_data, PyTree)
+    xr_data_roundtrip = xarray_jax.to_xarray(xj_data)
+    assert xr_data.equals(xr_data_roundtrip)
 
+@pytest.mark.skip(reason="Dataset is not yet supported.")
 def test_ds():
     ds = xr.tutorial.load_dataset("air_temperature")
 

@@ -2,12 +2,12 @@ import collections
 from collections.abc import Hashable, Iterator, Mapping
 from typing import (
     Optional,
+    Union,
 )
 
 import equinox as eqx
 import jax
 import xarray
-
 
 class _HashableCoords(collections.abc.Mapping):
     """
@@ -149,3 +149,45 @@ class XjDataset(eqx.Module):
             _HashableCoords(ds.coords),
             ds.attrs,
         )
+
+def from_xarray(obj: Union[xarray.Variable, xarray.DataArray, xarray.Dataset]) -> Union[XjVariable, XjDataArray, XjDataset]:
+    """ Convert an xarray object to an xarray_jax object.
+
+    Args:
+        obj (Union[xarray.Variable, xarray.DataArray, xarray.Dataset]): xarray object to convert.
+
+    Raises:
+        ValueError: If the input object is not a supported type.
+
+    Returns:
+        Union[XjVariable, XjDataArray, XjDataset]: Converted xarray_jax object.
+    """
+    if isinstance(obj, xarray.Variable):
+        return XjVariable.from_xarray(obj)
+    elif isinstance(obj, xarray.DataArray):
+        return XjDataArray.from_xarray(obj)
+    elif isinstance(obj, xarray.Dataset):
+        return XjDataset.from_xarray(obj)
+    else:
+        raise ValueError(f"Unsupported type: {type(obj)}")
+    
+def to_xarray(obj: Union[XjVariable, XjDataArray, XjDataset]) -> Union[xarray.Variable, xarray.DataArray, xarray.Dataset]:
+    """ Convert an xarray_jax object to an xarray object.
+
+    Args:
+        obj (Union[XjVariable, XjDataArray, XjDataset]): xarray_jax object to convert.
+
+    Raises:
+        ValueError: If the input object is not a supported type.
+
+    Returns:
+        Union[xarray.Variable, xarray.DataArray, xarray.Dataset]: Converted xarray object.
+    """
+    if isinstance(obj, XjVariable):
+        return obj.to_xarray()
+    elif isinstance(obj, XjDataArray):
+        return obj.to_xarray()
+    elif isinstance(obj, XjDataset):
+        return obj.to_xarray()
+    else:
+        raise ValueError(f"Unsupported type: {type(obj)}")
