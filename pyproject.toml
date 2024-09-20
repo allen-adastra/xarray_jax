@@ -12,10 +12,14 @@ equinox = "^0.11.7"
 xarray = "^2024.9.0"
 
 
+[tool.poetry.group.dev]
+optional = true
+
 [tool.poetry.group.dev.dependencies]
 ipykernel = "^6.29.5"
 hypothesis = "^6.112.1"
 diffrax = "^0.6.0"
+pytest = "^8.3.3"
 
 [build-system]
 requires = ["poetry-core"]
