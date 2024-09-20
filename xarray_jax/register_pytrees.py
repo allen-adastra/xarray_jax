@@ -102,4 +102,5 @@ jax.tree_util.register_pytree_node(
 jax.tree_util.register_pytree_node(
     xarray.DataArray, _flatten_data_array, _unflatten_data_array
 )
-jax.tree_util.register_pytree_node(xarray.Dataset, _flatten_dataset, _unflatten_dataset)
+
+# TODO(allenw): fix xarray.Dataset pytree registration
