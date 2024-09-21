@@ -8,6 +8,21 @@ from typing import (
 import equinox as eqx
 import jax
 import xarray
+import jax.numpy as jnp
+
+
+def error_if_inside_jit():
+    is_jit = isinstance(jnp.array(0), jax.core.Tracer)
+    if is_jit:
+        raise ValueError(
+            "This function should not be called inside a jax.jit'ed function."
+        )
+
+
+def maybe_hash_coords(coords):
+    if isinstance(coords, _HashableCoords):
+        return coords
+    return _HashableCoords(coords)
 
 
 class _HashableCoords(collections.abc.Mapping):
@@ -77,6 +92,7 @@ class XjVariable(eqx.Module):
         self.attrs = attrs
 
     def to_xarray(self) -> xarray.Variable:
+        error_if_inside_jit()
         if self.data is None:
             return None
         return xarray.Variable(dims=self.dims, data=self.data, attrs=self.attrs)
@@ -102,6 +118,7 @@ class XjDataArray(eqx.Module):
         self.name = name
 
     def to_xarray(self) -> xarray.DataArray:
+        error_if_inside_jit()
         var = self.variable.to_xarray()
         if var is None:
             return None
@@ -110,7 +127,7 @@ class XjDataArray(eqx.Module):
     @classmethod
     def from_xarray(cls, da: xarray.DataArray) -> "XjDataArray":
         return cls(
-            XjVariable.from_xarray(da.variable), _HashableCoords(da.coords), da.name
+            XjVariable.from_xarray(da.variable), maybe_hash_coords(da.coords), da.name
         )
 
 
@@ -130,6 +147,7 @@ class XjDataset(eqx.Module):
         self.attrs = attrs
 
     def to_xarray(self) -> xarray.Dataset:
+        error_if_inside_jit()
         data_vars = {name: var.to_xarray() for name, var in self.variables.items()}
 
         data_vars = {name: var for name, var in data_vars.items() if var is not None}
@@ -147,7 +165,7 @@ class XjDataset(eqx.Module):
                 name: XjVariable.from_xarray(da.variable)
                 for name, da in ds.data_vars.items()
             },
-            _HashableCoords(ds.coords),
+            maybe_hash_coords(ds.coords),
             ds.attrs,
         )
 

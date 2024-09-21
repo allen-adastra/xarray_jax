@@ -1,7 +1,9 @@
 import xarray
 import jax
-from .custom_types import _HashableCoords
+from .custom_types import maybe_hash_coords, _HashableCoords
 from typing import Tuple, Hashable, Mapping
+
+import numpy as np
 
 
 def _flatten_variable(
@@ -12,7 +14,6 @@ def _flatten_variable(
         v._dims,
         v._attrs,
     )
-    assert isinstance(aux, Hashable)
     return children, aux
 
 
@@ -39,8 +40,7 @@ def _flatten_data_array(
     da: xarray.DataArray,
 ):
     children = (da._variable,)
-    aux = (da._name, da._coords, da._indexes)
-    assert isinstance(aux, Hashable)
+    aux = (da._name, maybe_hash_coords(da._coords), da._indexes)
     return children, aux
 
 
@@ -53,7 +53,7 @@ def _unflatten_data_array(
     da = object.__new__(xarray.DataArray)
     da._variable = variable
     da._name = name
-    da._coords = coords
+    da._coords = dict(coords)
     da._indexes = indexes
     return da
 
@@ -61,11 +61,14 @@ def _unflatten_data_array(
 def _flatten_dataset(
     ds: xarray.Dataset,
 ):
-    data_vars = {name: data_array.variable for name, data_array in ds.data_vars.items()}
+    coord_names = ds._coord_names
+    variables = ds._variables
 
-    data_var_leaves, data_var_treedef = jax.tree.flatten(data_vars)
-    children = data_var_leaves
-    aux = (ds.coords, data_var_treedef, ds._indexes, ds._dims, ds._attrs)
+    coords = {name: variables[name] for name in coord_names}
+    data_vars = {name: variables[name] for name in variables if name not in coord_names}
+
+    children = (data_vars,)
+    aux = (maybe_hash_coords(coords), ds._indexes, ds._dims, ds._attrs)
     assert isinstance(aux, Hashable)
     return children, aux
 
@@ -77,15 +80,13 @@ def _unflatten_dataset(
     ],
 ) -> xarray.Dataset:
     """Unflattens a Dataset for jax.tree_util."""
-    data_var_leaves = children
-    coords, data_var_treedef, indexes, dims, attrs = aux
-
-    data_vars = jax.tree.unflatten(data_var_treedef, data_var_leaves)
+    data_vars = children[0]
+    coords, indexes, dims, attrs = aux
 
     ds = object.__new__(xarray.Dataset)
     ds._dims = dims
     ds._variables = data_vars | dict(coords)
-    ds._coord_names = list(coords.keys())
+    ds._coord_names = set(coords.keys())
     ds._attrs = attrs
     ds._indexes = indexes
     ds._encoding = None
@@ -96,11 +97,8 @@ def _unflatten_dataset(
 jax.tree_util.register_pytree_node(
     xarray.Variable, _flatten_variable, _unflatten_variable
 )
-jax.tree_util.register_pytree_node(
-    xarray.IndexVariable, _flatten_variable, _unflatten_variable
-)
+jax.tree_util.register_static(xarray.IndexVariable)
 jax.tree_util.register_pytree_node(
     xarray.DataArray, _flatten_data_array, _unflatten_data_array
 )
-
-# TODO(allenw): fix xarray.Dataset pytree registration
+jax.tree_util.register_pytree_node(xarray.Dataset, _flatten_dataset, _unflatten_dataset)
