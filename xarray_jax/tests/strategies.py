@@ -100,6 +100,22 @@ def filt(x):
     return eqx.filter(x, lambda _: True)
 
 
+def random_partition_combine(x, seed=42):
+    """Randomly partition and combine a tree."""
+
+    # Generate a random mask on the input tree.
+    leaves, treedef = jax.tree.flatten(x)
+    uniform = jax.random.uniform(jax.random.PRNGKey(seed), len(leaves))
+    keep = [
+        (u > 0.5).item() for u in uniform
+    ]  # For each leaf, 50/50 chance of keeping it.
+    tree_mask = jax.tree.unflatten(treedef, keep)
+
+    # Partition and combine the tree.
+    tree0, tree1 = eqx.partition(x, tree_mask)
+    return eqx.combine(tree0, tree1)
+
+
 identity_transforms = sampled_from(
     [
         xj_roundtrip,
@@ -108,5 +124,6 @@ identity_transforms = sampled_from(
         vmap_identity,
         partition,
         filt,
+        random_partition_combine,
     ]
 )
