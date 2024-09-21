@@ -18,13 +18,13 @@ da = xr.DataArray(
 # Do some operations inside a JIT compiled function.
 @eqx.filter_jit
 def some_function(data):
-    neg_data = -1.0 * data # Multiply data by -1.
+    neg_data = -1.0 * data
     return neg_data * neg_data.coords["y"] # Multiply data by coords.
 
 da = some_function(da)
 
 # Construct a xr.DataArray with dummy data (useful for tree manipulation).
-da_mask = jax.tree.map(lambda _: bool, data)
+da_mask = jax.tree.map(lambda _: True, data)
 
 # Use jax.grad.
 @eqx.filter_jit
