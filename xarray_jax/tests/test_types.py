@@ -1,0 +1,101 @@
+import xarray as xr
+from hypothesis import given, settings
+import jax
+
+from xarray_jax.tests.strategies import (
+    generic_xr_strat,
+    ufunc_strat,
+    xp_variables,
+    identity_transforms,
+    xj_roundtrip,
+    float_vars_and_das,
+)
+import equinox as eqx
+
+
+jax.config.update("jax_enable_x64", True)
+
+
+@given(var=xp_variables, ufunc=ufunc_strat)
+@settings(deadline=None)
+def test_variables(var: xr.Variable, ufunc):
+    #
+    # Test that we can create a boolean mask tree.
+    #
+    var_mask = jax.tree.map(lambda _: True, var)
+    assert var_mask._data is True
+    assert var_mask._dims == var._dims
+    assert var_mask._attrs == var._attrs
+
+
+@given(
+    xr_data=generic_xr_strat,
+    ufunc=ufunc_strat,
+)
+@settings(deadline=None)
+def test_ufunc(xr_data, ufunc):
+    """
+    Test that we can apply a jitted ufunc to the da and get the correct result as if we applied it directly to the data.
+    """
+
+    @eqx.filter_jit
+    def fn(data):
+        return xr.apply_ufunc(ufunc, data)
+
+    result = fn(xr_data)
+    expected = xr.apply_ufunc(ufunc, xr_data)
+    assert result.equals(expected)
+
+
+@given(
+    xr_data=generic_xr_strat,
+)
+@settings(deadline=None)
+def test_boolean_mask(xr_data):
+    """
+    Simple test that we can construct a boolean mask tree with all trues and apply eqx.filter.
+    """
+
+    @eqx.filter_jit
+    def fn(data):
+        mask = jax.tree.map(lambda _: True, data)
+        return eqx.filter(data, mask)
+
+    result = fn(xr_data)
+    assert xr_data.equals(result)
+
+
+@given(
+    xr_data=generic_xr_strat,
+    transform=identity_transforms,
+)
+@settings(deadline=None)
+def test_identity_transforms(xr_data, transform):
+    """
+    Test for identity JAX transformations.
+    """
+    # Run the transform without JIT.
+    out = transform(xr_data)
+    assert xr_data.equals(out)
+    # Do another round trip to test that we can call the xr constructor on the output.
+    reconstructed = xj_roundtrip(out)
+    assert xr_data.equals(reconstructed)
+
+
+@given(
+    xr_data=float_vars_and_das,
+)
+@settings(deadline=None)
+def test_grads(xr_data):
+    # Test the gradient of sum(x**2), which is 2*x.
+    @eqx.filter_jit
+    def fn(data):
+        return (data**2.0).sum().data  # Requires .data to get the value.
+
+    grad = jax.grad(fn)(xr_data)
+    expected = 2 * xr_data
+    assert grad.equals(expected)
+
+    val, grad = eqx.filter_value_and_grad(fn)(xr_data)
+    assert val == (xr_data**2.0).sum().data
+    assert grad.equals(expected)

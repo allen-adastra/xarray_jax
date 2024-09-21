@@ -25,41 +25,28 @@ da = some_function(da)
 
 # Construct a xr.DataArray with dummy data (useful for tree manipulation).
 da_mask = jax.tree.map(lambda _: bool, data)
-```
 
-`xr.Dataset` is currently not supported, but you can do conversions to/from a custom `xj.Dataset` types inside jit-compiled functions.
-``` python
-ds = xr.tutorial.load_dataset("air_temperature")
-
+# Use jax.grad.
 @eqx.filter_jit
-def some_function(xjds: xj.XjDataset):
-    # Convert to xr.Dataset.
-    xrds = xj.to_xarray(xjds)
+def fn(data):
+    return (data**2.0).sum().data
 
-    # Do some operation.
-    xrds = -1.0 * xrds
-
-    # Convert back to xj.Dataset.
-    return xj.from_xarray(xrds)
-
-xjds = some_function(xj.from_xarray(ds))
-ds_new = xj.to_xarray(xjds)
+grad = jax.grad(fn)(da)
 ```
-
 
 
 ## Status
-- [ ] PyTree node registrations
+- [x] PyTree node registrations
   - [x] `xr.Variable`
-  - [x] `xr.IndexVariable`
   - [x] `xr.DataArray`
-  - [ ] `xr.Dataset`
+  - [x] `xr.Dataset`
 - [x] Minimal shadow types implemented as [equinox modules](https://github.com/patrick-kidger/equinox) to handle edge cases (Note: these types are merely data structures that contain the data of these types. They don't have any of the methods of the xarray types).
   - [x] `xj.Variable`
   - [x] `xj.DataArray`
   - [x] `xj.Dataset`
-- [x] `xj.from_xarray` and `xj.to_xarray` functions to go between `xj` and `xr` types inside jit-compiled functions.
+- [x] `xj.from_xarray` and `xj.to_xarray` functions to go between `xj` and `xr` types.
 - [x] Support for `xr` types with dummy data (useful for tree manipulation).
+- [ ] Support for transformations that change the dimensionality of the data.
 
 ## Sharp Edges
 
