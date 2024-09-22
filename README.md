@@ -41,9 +41,9 @@ grad = jax.grad(fn)(da)
   - [x] `xr.DataArray`
   - [x] `xr.Dataset`
 - [x] Minimal shadow types implemented as [equinox modules](https://github.com/patrick-kidger/equinox) to handle edge cases (Note: these types are merely data structures that contain the data of these types. They don't have any of the methods of the xarray types).
-  - [x] `xj.Variable`
-  - [x] `xj.DataArray`
-  - [x] `xj.Dataset`
+  - [x] `XjVariable`
+  - [x] `XjDataArray`
+  - [x] `XjDataset`
 - [x] `xj.from_xarray` and `xj.to_xarray` functions to go between `xj` and `xr` types.
 - [x] Support for `xr` types with dummy data (useful for tree manipulation).
 - [ ] Support for transformations that change the dimensionality of the data.
