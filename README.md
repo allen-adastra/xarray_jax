@@ -33,7 +33,10 @@ def fn(data):
 
 grad = jax.grad(fn)(da)
 ```
-
+## Installation
+```bash
+pip install xarray_jax
+```
 
 ## Status
 - [x] PyTree node registrations
