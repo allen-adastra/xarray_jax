@@ -32,6 +32,14 @@ def fn(data):
     return (data**2.0).sum().data
 
 grad = jax.grad(fn)(da)
+
+# Convert to a custom XjDataArray, implemented as an equinox module.
+# (Useful for avoiding potentially weird xarray interactions with JAX).
+xj_da = xj.from_xarray(da)
+
+# Convert back to a xr.DataArray.
+da = xj.to_xarray(xj_da)
+
 ```
 ## Installation
 ```bash
