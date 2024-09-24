@@ -1,6 +1,6 @@
-# (Experiment): Simple Xarray + JAX Integration
+# Simple Xarray + JAX Integration
 
-This is a simple experiment at integrating Xarray + JAX, leveraging [equinox](https://github.com/patrick-kidger/equinox).
+This is an experiment at integrating Xarray + JAX in a simple way, leveraging [equinox](https://github.com/patrick-kidger/equinox).
 
 ``` python
 import jax.numpy as jnp
@@ -96,3 +96,6 @@ This experiment is largely inspired by the [GraphCast implementation](https://gi
 However, this experiment aims to:
 1. Take a more minimialist approach (and thus neglects some features such as support JAX arrays as coordinates).
 2. Find a solution more compatible with common JAX PyTree manipulation patterns that trigger errors with Xarray types. For example, it's common to use boolean masks to filter out elements of a PyTree, but this tends to fail with Xarray types.
+
+## Acknowledgements
+This repo was made possible by great discussions within the JAX + Xarray open source community, especially [this one](https://github.com/pydata/xarray/discussions/8164). In particular, the author would like to acknowledge @shoyer, @mjwillson, and @TomNicholas.
