@@ -1,9 +1,24 @@
 import xarray
 import jax
 from .custom_types import maybe_hash_coords, _HashableCoords
-from typing import Tuple, Hashable, Mapping
+from typing import Tuple, Hashable, Mapping, Callable
+import contextlib
+import contextvars
 
-import numpy as np
+VarChangeFn = Callable[[xarray.Variable], xarray.Variable]
+_VAR_CHANGE_ON_UNFLATTEN_FN: contextvars.ContextVar[VarChangeFn] = (
+    contextvars.ContextVar("var_change_on_unflatten_fn")
+)
+
+
+@contextlib.contextmanager
+def var_change_on_unflatten(var_change_fn: VarChangeFn):
+    """A context manager for modifying a variable on unflatten. This was inspired by the dims_change_on_unflatten function in the GraphCast project, but is ultimately a different approach."""
+    token = _VAR_CHANGE_ON_UNFLATTEN_FN.set(var_change_fn)
+    try:
+        yield
+    finally:
+        _VAR_CHANGE_ON_UNFLATTEN_FN.reset(token)
 
 
 def _flatten_variable(
@@ -32,6 +47,10 @@ def _unflatten_variable(
     var._data = data
     var._attrs = attrs
     var._encoding = None
+
+    var_change_fn = _VAR_CHANGE_ON_UNFLATTEN_FN.get(None)
+    if var_change_fn is not None:
+        var = var_change_fn(var)
 
     return var
 
