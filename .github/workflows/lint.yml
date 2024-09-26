@@ -36,7 +36,7 @@ jobs:
           cache: "poetry"
 
       - name: Poetry install
-        run: poetry install
+        run: poetry install --with dev
 
       - name: Pre-commit install
         run: poetry run pre-commit install
