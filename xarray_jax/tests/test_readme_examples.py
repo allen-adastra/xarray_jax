@@ -1,7 +1,6 @@
 import xarray as xr
 import equinox as eqx
 import jax.numpy as jnp
-import xarray_jax as xj
 import pytest
 import jax
 
