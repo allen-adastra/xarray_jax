@@ -1,7 +1,6 @@
 import xarray as xr
 from hypothesis import given, settings
 import jax
-
 from xarray_jax.tests.strategies import (
     generic_xr_strat,
     ufunc_strat,
@@ -11,7 +10,7 @@ from xarray_jax.tests.strategies import (
     float_vars_and_das,
 )
 import equinox as eqx
-
+from xarray_jax.register_pytrees import var_change_on_unflatten
 
 jax.config.update("jax_enable_x64", True)
 
@@ -99,3 +98,46 @@ def test_grads(xr_data):
     val, grad = eqx.filter_value_and_grad(fn)(xr_data)
     assert val == (xr_data**2.0).sum().data
     assert grad.equals(expected)
+
+
+@given(xr_data=float_vars_and_das)
+@settings(deadline=None)
+def test_dims_change(xr_data):
+    # TODO(allenw): running into an issue when _attrs is not None on certain test cases.
+    if isinstance(xr_data, xr.DataArray):
+        xr_data._variable._attrs = None
+    elif isinstance(xr_data, xr.Variable):
+        xr_data._attrs = None
+
+    def add_one_n_times(data, n):
+        # Use lax.scan to add 1 n times
+        initial_carry = data
+
+        def add_one_scan(carry, _):
+            carry_out = carry + 1.0
+
+            return carry_out, carry_out
+
+        _, history = jax.lax.scan(add_one_scan, initial_carry, None, length=n)
+        return history
+
+    def var_change_fn(var):
+        if var._data.ndim == len(var._dims):
+            return var
+        elif var._data.ndim == len(var._dims) + 1:
+            var._dims = ("time", *var._dims)
+            return var
+        else:
+            raise ValueError("Invalid dims.")
+
+    n_steps = 10
+    with var_change_on_unflatten(var_change_fn):
+        history = add_one_n_times(xr_data, n_steps)
+
+    assert history.dims == ("time", *xr_data.dims)
+    assert history.shape == (n_steps, *xr_data.shape)
+
+    reference = xr_data
+    for i in range(n_steps):
+        reference = reference + 1
+        assert history.isel(time=i).equals(reference)
