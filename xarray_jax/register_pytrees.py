@@ -27,7 +27,8 @@ def _flatten_variable(
     children = (v._data,)
     aux = (
         v._dims,
-        v._attrs,
+        # TODO(allenw): JAX will somehow internally convert empty dictionaries to None, which can cause issues with having inconsistent tree structures.
+        v._attrs if v._attrs is not {} else None,
     )
     return children, aux
 

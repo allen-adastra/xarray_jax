@@ -103,12 +103,6 @@ def test_grads(xr_data):
 @given(xr_data=float_vars_and_das)
 @settings(deadline=None)
 def test_dims_change(xr_data):
-    # TODO(allenw): running into an issue when _attrs is not None on certain test cases.
-    if isinstance(xr_data, xr.DataArray):
-        xr_data._variable._attrs = None
-    elif isinstance(xr_data, xr.Variable):
-        xr_data._attrs = None
-
     def add_one_n_times(data, n):
         # Use lax.scan to add 1 n times
         initial_carry = data
