@@ -27,7 +27,7 @@ def _flatten_variable(
     children = (v._data,)
     aux = (
         v._dims,
-        # TODO(allenw): JAX will somehow internally convert empty dictionaries to None, which can cause issues with having inconsistent tree structures.
+        # TODO(allenw): JAX will somehow internally convert empty dictionaries to None, which can cause issues with having inconsistent tree structures. https://github.com/allen-adastra/xarray_jax/issues/11
         v._attrs if v._attrs is not {} else None,
     )
     return children, aux
