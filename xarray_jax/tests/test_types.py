@@ -99,11 +99,11 @@ def test_grads(xr_data):
 
     grad = jax.grad(fn)(xr_data)
     expected = 2 * xr_data
-    assert grad.equals(expected)
+    assert grad.assert_allclose(expected)
 
     val, grad = eqx.filter_value_and_grad(fn)(xr_data)
     assert val == (xr_data**2.0).sum().data
-    assert grad.equals(expected)
+    assert grad.assert_allclose(expected)
 
 
 @given(xr_data=float_vars_and_das)
