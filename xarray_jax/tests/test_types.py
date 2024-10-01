@@ -98,7 +98,6 @@ def test_grads(xr_data):
     val, grad = eqx.filter_value_and_grad(fn)(xr_data)
     assert val == (xr_data**2.0).sum().data
     xr.testing.assert_allclose(grad, expected)
-    assert grad.assert_allclose(expected)
 
 
 @given(xr_data=float_vars_and_das)
