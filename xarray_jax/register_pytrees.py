@@ -1,14 +1,17 @@
 import xarray
+from xarray.core.indexes import Indexes
 import jax
 from .custom_types import maybe_hash_coords, _HashableCoords
-from typing import Tuple, Hashable, Mapping, Callable
+from typing import Tuple, Hashable, Mapping, Callable, Any
 import contextlib
 import contextvars
 
 VarChangeFn = Callable[[xarray.Variable], xarray.Variable]
-_VAR_CHANGE_ON_UNFLATTEN_FN: contextvars.ContextVar[
-    VarChangeFn
-] = contextvars.ContextVar("var_change_on_unflatten_fn")
+_VAR_CHANGE_ON_UNFLATTEN_FN: contextvars.ContextVar[VarChangeFn] = (
+    contextvars.ContextVar("var_change_on_unflatten_fn")
+)
+
+XrAttrs = Mapping[Any, Any]
 
 
 @contextlib.contextmanager
@@ -23,19 +26,20 @@ def var_change_on_unflatten(var_change_fn: VarChangeFn):
 
 def _flatten_variable(
     v: xarray.Variable,
-) -> Tuple[Tuple[jax.typing.ArrayLike], Tuple[Hashable, ...]]:
-    children = (v._data,)
+) -> Tuple[Tuple[jax.typing.ArrayLike], Tuple[Hashable, XrAttrs]]:
+    """Flattens a Variable for jax.tree_util."""
+    children = (
+        v._data,
+    )  # Use the private interface for allowing tree manipulations such as tree masks.
     aux = (
-        v._dims,
-        # Xarray will sometimes turn None into empty dictionaries. To maintain consistent tree structures, we convert None to empty dictionaries.
-        # https://github.com/pydata/xarray/issues/9560
-        {} if v._attrs is None else v._attrs,
+        v.dims,
+        v.attrs,
     )
     return children, aux
 
 
 def _unflatten_variable(
-    aux: Tuple[Hashable, ...], children: Tuple[jax.typing.ArrayLike]
+    aux: Tuple[Hashable, XrAttrs], children: Tuple[jax.typing.ArrayLike]
 ) -> xarray.Variable:
     """Unflattens a Variable for jax.tree_util."""
     (
@@ -59,14 +63,20 @@ def _unflatten_variable(
 
 def _flatten_data_array(
     da: xarray.DataArray,
-):
-    children = (da._variable,)
-    aux = (da._name, maybe_hash_coords(da._coords), da._indexes)
+) -> Tuple[Tuple[xarray.Variable], Tuple[Hashable, _HashableCoords, Indexes]]:
+    """Flattens a DataArray for jax.tree_util."""
+    children = (da.variable,)
+    aux = (
+        da.name,
+        maybe_hash_coords(da._coords),
+        da._indexes,
+    )  # TODO(allenw): tests break when using the public API for .coords and .indexes.
     return children, aux
 
 
 def _unflatten_data_array(
-    aux: Tuple[Hashable, ...], children: Tuple[jax.typing.ArrayLike]
+    aux: Tuple[Hashable, _HashableCoords, Indexes],
+    children: Tuple[xarray.Variable],
 ) -> xarray.DataArray:
     """Unflattens a DataArray for jax.tree_util."""
     name, coords, indexes = aux
@@ -81,7 +91,11 @@ def _unflatten_data_array(
 
 def _flatten_dataset(
     ds: xarray.Dataset,
-):
+) -> Tuple[
+    Tuple[Mapping[Hashable, xarray.Variable]],
+    Tuple[_HashableCoords, Indexes, Hashable, XrAttrs],
+]:
+    """Flattens a Dataset for jax.tree_util."""
     coord_names = ds._coord_names
     variables = ds._variables
 
@@ -89,16 +103,14 @@ def _flatten_dataset(
     data_vars = {name: variables[name] for name in variables if name not in coord_names}
 
     children = (data_vars,)
-    aux = (maybe_hash_coords(coords), ds._indexes, ds._dims, ds._attrs)
+    aux = (maybe_hash_coords(coords), ds._indexes, ds.dims, ds.attrs)
     assert isinstance(aux, Hashable)
     return children, aux
 
 
 def _unflatten_dataset(
-    aux: _HashableCoords,
-    children: Tuple[
-        Mapping[Hashable, xarray.Variable], Mapping[Hashable, xarray.Variable]
-    ],
+    aux: Tuple[_HashableCoords, Indexes, Hashable, XrAttrs],
+    children: Tuple[Mapping[Hashable, xarray.Variable]],
 ) -> xarray.Dataset:
     """Unflattens a Dataset for jax.tree_util."""
     data_vars = children[0]
