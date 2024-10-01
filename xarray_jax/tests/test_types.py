@@ -24,13 +24,7 @@ def test_variables(var: xr.Variable, ufunc):
     var_mask = jax.tree.map(lambda _: True, var)
     assert var_mask._data is True
     assert var_mask._dims == var._dims
-
-    # xarray_jax converts None to {} for attrs.
-    # https://github.com/pydata/xarray/issues/9560
-    if var._attrs is None:
-        assert var_mask._attrs == {}
-    else:
-        assert var_mask._attrs == var._attrs
+    assert var_mask.attrs == var.attrs
 
 
 @given(
