@@ -26,7 +26,8 @@ da = some_function(da)
 # Construct a xr.DataArray with dummy data (useful for tree manipulation).
 da_mask = jax.tree.map(lambda _: True, da)
 
-# Take the gradient of a jitted function.    @eqx.filter_jit
+# Take the gradient of a jitted function.
+@eqx.filter_jit
 def fn(data):
     return (data**2.0).sum().data
 
