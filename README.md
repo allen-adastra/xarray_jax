@@ -19,19 +19,19 @@ da = xr.DataArray(
 @eqx.filter_jit
 def some_function(data):
     neg_data = -1.0 * data
-    return neg_data * neg_data.coords["y"] # Multiply data by coords.
+    return neg_data * neg_data.coords["y"]  # Multiply data by coords.
 
 da = some_function(da)
 
 # Construct a xr.DataArray with dummy data (useful for tree manipulation).
-da_mask = jax.tree.map(lambda _: True, data)
+da_mask = jax.tree.map(lambda _: True, da)
 
-# Use jax.grad.
+# Take the gradient of a jitted function.
 @eqx.filter_jit
 def fn(data):
     return (data**2.0).sum().data
 
-grad = jax.grad(fn)(da)
+da_grad = jax.grad(fn)(da)
 
 # Convert to a custom XjDataArray, implemented as an equinox module.
 # (Useful for avoiding potentially weird xarray interactions with JAX).
@@ -39,7 +39,6 @@ xj_da = xj.from_xarray(da)
 
 # Convert back to a xr.DataArray.
 da = xj.to_xarray(xj_da)
-
 ```
 ## Installation
 ```bash
