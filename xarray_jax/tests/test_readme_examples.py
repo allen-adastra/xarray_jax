@@ -46,6 +46,14 @@ def test_main_example():
     # Convert back to a xr.DataArray.
     da = xj.to_xarray(xj_da)
 
+    # Use xj.var_change_on_unflatten to allow us to expand the dimensions of the DataArray.
+    def add_dim_to_var(var):
+        var._dims = ("new_dim", *var._dims)
+        return var
+
+    with xj.var_change_on_unflatten(add_dim_to_var):
+        da = jax.tree.map(lambda x: jnp.expand_dims(x, axis=0), da)
+
 
 def test_fail_example():
     var = xr.Variable(dims=("x", "y"), data=jnp.ones((3, 3)))
