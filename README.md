@@ -1,6 +1,6 @@
 # Simple Xarray + JAX Integration
 
-This is an experiment at integrating Xarray + JAX in a simple way, leveraging [equinox](https://github.com/patrick-kidger/equinox).
+This is an experiment at integrating Xarray + JAX in a simple way.
 
 ``` python
 import jax.numpy as jnp
