@@ -75,7 +75,17 @@ def flatten_unflatten(x):
     return jax.tree.unflatten(treedef, leaves)
 
 
-def jit_identity(x):
+def jax_jit_identity(x):
+    return jax.jit(lambda x_: x_)(x)
+
+
+def jax_jit_lowering_identity(x):
+    lowered_fn = jax.jit(lambda x_: x_).lower(x)
+    result = lowered_fn.compile()(x)
+    return result
+
+
+def eqx_jit_identity(x):
     @eqx.filter_jit
     def fn(x_):
         return x_
@@ -120,7 +130,9 @@ identity_transforms = sampled_from(
     [
         xj_roundtrip,
         flatten_unflatten,
-        jit_identity,
+        jax_jit_identity,
+        jax_jit_lowering_identity,
+        eqx_jit_identity,
         vmap_identity,
         partition,
         filt,
