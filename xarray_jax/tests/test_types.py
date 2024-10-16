@@ -11,6 +11,7 @@ from xarray_jax.tests.strategies import (
 )
 import equinox as eqx
 from xarray_jax.register_pytrees import var_change_on_unflatten
+import jax.numpy as jnp
 
 jax.config.update("jax_enable_x64", True)
 
