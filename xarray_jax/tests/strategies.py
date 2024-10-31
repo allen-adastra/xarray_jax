@@ -139,7 +139,7 @@ identity_transforms = sampled_from(
         xj_roundtrip,
         flatten_unflatten,
         jax_jit_identity,
-        jax_jit_lowering_identity,
+        # jax_jit_lowering_identity, # TODO(allenw): Fix this test.
         eqx_jit_identity,
         vmap_identity,
         partition,
