@@ -13,7 +13,9 @@ jnps = make_strategies_namespace(jnp)
 
 xp_variables = xrst.variables(
     array_strategy_fn=jnps.arrays,
-    dtype=jnps.scalar_dtypes(),
+    dtype=jnps.scalar_dtypes().filter(
+        lambda dtype: dtype != jnp.bool_
+    ),  # Exclude boolean dtype.
 )
 
 xp_variables_float = xrst.variables(
@@ -76,11 +78,17 @@ def flatten_unflatten(x):
 
 
 def jax_jit_identity(x):
-    return jax.jit(lambda x_: x_)(x)
+    def identity(x_):
+        return x_
+
+    return jax.jit(identity)(x)
 
 
 def jax_jit_lowering_identity(x):
-    lowered_fn = jax.jit(lambda x_: x_).lower(x)
+    def identity(x_):
+        return x_
+
+    lowered_fn = jax.jit(identity).lower(x)
     result = lowered_fn.compile()(x)
     return result
 
