@@ -1,15 +1,15 @@
 [tool.poetry]
 name = "xarray-jax"
-version = "0.0.5"
+version = "0.0.6"
 description = ""
 authors = ["Allen Wang <allenw@mit.edu>"]
 readme = "README.md"
 
 [tool.poetry.dependencies]
 python = "^3.10"
-jax = "^0.4.33"
-equinox = "^0.11.7"
-xarray = "^2024.9.0"
+jax = ">=0.4.33"
+equinox = ">=0.11.7"
+xarray = ">=2024.9.0"
 
 
 [tool.poetry.group.dev]
