@@ -1,6 +1,7 @@
 import xarray as xr
 from hypothesis import given, settings
 import jax
+import jax.numpy as jnp
 from xarray_jax.tests.strategies import (
     generic_xr_strat,
     ufunc_strat,
@@ -96,7 +97,8 @@ def test_grads(xr_data):
     xr.testing.assert_allclose(grad, expected)
 
     val, grad = eqx.filter_value_and_grad(fn)(xr_data)
-    assert val == (xr_data**2.0).sum().data
+    expected_val = (xr_data**2.0).sum().data
+    assert jnp.allclose(val, expected_val)
     xr.testing.assert_allclose(grad, expected)
 
 
