@@ -32,8 +32,8 @@ def _flatten_variable(
         v._data,
     )  # Use the private interface for allowing tree manipulations such as tree masks.
     aux = (
-        v.dims,
-        v.attrs,
+        v._dims,
+        v._attrs,
     )
     return children, aux
 
@@ -103,7 +103,7 @@ def _flatten_dataset(
     data_vars = {name: variables[name] for name in variables if name not in coord_names}
 
     children = (data_vars,)
-    aux = (maybe_hash_coords(coords), ds._indexes, ds.dims, ds.attrs)
+    aux = (maybe_hash_coords(coords), ds._indexes, ds._dims, ds._attrs)
     assert isinstance(aux, Hashable)
     return children, aux
 
