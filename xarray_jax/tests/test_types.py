@@ -137,3 +137,26 @@ def test_dims_change(xr_data):
     for i in range(n_steps):
         reference = reference + 1
         assert history.isel(time=i).equals(reference)
+
+
+@given(xr_data=float_vars_and_das)
+@settings(deadline=None)
+def test_ds_dims(xr_data):
+    # In 98c5601 we found that Pytree manipulations of xr.Dataset can cause
+    # ds._dims to contain something like a: FrozenMappingWarningOnValuesAccess(FrozenMappingWarningOnValuesAccess({'0': 1}))
+    # This is a test to check that the issue doesn't occur again.
+    if isinstance(xr_data, xr.Variable):
+        xr_data = xr.DataArray(
+            xr_data,
+            coords={
+                "dummy_coord": (xr_data.dims, jnp.ones(xr_data.data.shape)),
+                "dummy_coord2": (xr_data.dims, jnp.asarray(xr_data.data)),
+            },
+        )
+
+    # Test creating a Dataset from the DataArray
+    ds = xr.Dataset({"data": xr_data})
+
+    ds2 = jax.tree.map(lambda x: x + 1.0, ds)
+
+    assert not isinstance(ds2._dims, xr.core.utils.FrozenMappingWarningOnValuesAccess)
