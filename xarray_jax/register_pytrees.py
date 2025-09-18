@@ -33,7 +33,7 @@ def _flatten_variable(
     )  # Use the private interface for allowing tree manipulations such as tree masks.
     aux = (
         v._dims,
-        v._attrs,
+        v.attrs,  # TODO(allenw): we seem to need to public access attrs to avoid spurious differences in PyTree structure.
     )
     return children, aux
 
